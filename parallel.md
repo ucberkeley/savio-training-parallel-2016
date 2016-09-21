@@ -72,12 +72,12 @@ Here's an example of you might install a piece of software in your home director
 ```
 mkdir software; cd software
 mkdir src; cd src  # set up a directory for source packages
-# install gdal, needed for rgdal
-V=2.0.2
-PKG=gdal
+# install geos, needed for rgeos R package
+V=3.5.0
+PKG=geos
 INSTALLDIR=~/software/${PKG}
 wget http://download.osgeo.org/${PKG}/${PKG}-${V}.tar.bz2
-bunzip2 ${PKG}-${V}.bz2
+bunzip2 ${PKG}-${V}.tar.bz2
 cd ${PKG}-${V}
 ./configure --prefix=$INSTALLDIR | tee ../configure.log   # --prefix is key to install in directory you have access to
 make | tee ../make.log
@@ -87,7 +87,8 @@ make install | tee ../install.log
 For Cmake, the following may work:
 ```
 $PKG=foo
-cmake -DCMAKE_INSTALL_PREFIX=/global/home/users/$USER/software/$PKG ..
+INSTALLDIR=~/software/${PKG}
+cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} ..
 ```
 
 If you're then going to install additional software that uses the software you just installed and that software needs to link against compiled code from the installed software, you may need something like this:
@@ -128,6 +129,29 @@ TMP=`R CMD config R_LIB_DIR`
 echo ${TMP}
 ls ${TMP}
 ```
+
+# Installation for an entire group
+
+You can follow the approaches on the previous slides, but have your installation directory be on /home/projects/${GROUP} or /scratch/users/${USER} as well.
+
+If you change the UNIX permissions of the installed files to allow your group members access, then they should be able to use the software too.
+
+For example:
+```
+chmod g+r -R ~/software/${PKG}
+chmod g+x ~/software/${PKG}/bin
+``
+will allow reading by group members for all files in the directory and the `g+x` is done on the executables in `bin`.
+
+You may also want to set up your own module that allows you to easily set your environment so that the software is accessible for you (and possibly others in your group). To do this you need to:
+
+  - create a directory in which you store module files and add that directory to the MODULEPATH variable (e.g., in your .bashrc)
+       - ```export MODULEPATH=$MODULEPATH:~/location/of/my/modulefiles```
+  - create a module file for the software and version that you have installed
+       - ```mkdir $MODULEPATH/tensorflow```
+       - now edit the file for the version you want to add, e.g., `$MODULEPATH/tensorflow/0.10.0`
+
+An example module file is `example-modulefile`.  There is also some high-level information on 
 
 # Parallel processing terminology
 
@@ -472,7 +496,9 @@ ipcluster stop
 
 # Example of hybrid parallelization with Python using threaded linear algebra
 
-[ CP to work through this - check that Python on Savio is linked to MKL ]
+[ CP to work through this - check that threaded ATLAS is used ]
+
+
 
 # Example use of standard software: R
 
