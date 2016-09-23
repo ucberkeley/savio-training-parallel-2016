@@ -77,18 +77,31 @@ V=3.5.0
 PKG=geos
 INSTALLDIR=~/software/${PKG}
 wget http://download.osgeo.org/${PKG}/${PKG}-${V}.tar.bz2
-bunzip2 ${PKG}-${V}.tar.bz2
+tar -xvjf ${PKG}-${V}.tar.bz2
 cd ${PKG}-${V}
 ./configure --prefix=$INSTALLDIR | tee ../configure.log   # --prefix is key to install in directory you have access to
 make | tee ../make.log
 make install | tee ../install.log
 ```
 
+```
+cd ~/software/src
+PKG=yaml
+V=0.1.7
+INSTALLDIR=~/software/${PKG}
+wget http://pyyaml.org/download/libyaml/${PKG}-${V}.tar.gz
+tar -xvzf ${PKG}-${V}.tar.gz
+cd ${PKG}-${V}
+./configure  --prefix=$INSTALLDIR | tee ../configure.log
+make | tee ../make.log
+make install ../make.log
+```
+
 For Cmake, the following may work:
 ```
 $PKG=foo
 INSTALLDIR=~/software/${PKG}
-cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} ..
+cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} . | tee ../cmake.log
 ```
 
 If you're then going to install additional software that uses the software you just installed and that software needs to link against compiled code from the installed software, you may need something like this:
@@ -103,55 +116,72 @@ This is because Linux only looks in certain directories for the location of .so 
 In other cases you might need to add the location of an executable to your PATH variable so that the operating system can find the executable. Linux only looks in certain directories for executables.
 
 ```
-# not needed in the geos example
-# export PATH=${INSTALLDIR}/bin:${PATH}
+export PATH=${INSTALLDIR}/bin:${PATH}
 ```
-
 
 # Installing Python and R packages 
 
 If you see comments about `libfoo.so` not found, see above comment about modifying your LD_LIBRARY_PATH environment variable. 
 
 ```
-module load python/3.5
-module load cuda
-PKG=pycuda
-pip install --user ${PKG}
-ls .local
+module load python/2.7.8
+module load pip
+PYPKG=pyyaml
+pip install --user ${PYPKG}
+ls .local/lib/python2.7/site-packages
+# needs to find header files
+pip install --user --ignore-installed --global-option=build_ext  --global-option="-I/${INSTALLDIR}/include" ${PYPKG}
+# no -lyaml (needs to find library) files 
+# in this case setting LD_LIBRARY_PATH does not work for some reason
+pip install --user --ignore-installed --global-option=build_ext --global-option="-I/${INSTALLDIR}/include" --global-option="-L/${INSTALLDIR}/lib" ${PYPKG}
 ```
 
-[[ perhaps python yaml pkg that depends on libyaml.so ]]
-
 ```
+# in this case, setting LD_LIBRARY_PATH works
 module load R
-Rscript -e "install.packages('rgeos', repos = 'http://cran.cnr.berkeley.edu', lib = Sys.getenv('R_LIB_DIR'))"
-TMP=`R CMD config R_LIB_DIR`
-echo ${TMP}
-ls ${TMP}
+Rscript -e "install.packages('rgeos', repos = 'http://cran.cnr.berkeley.edu', lib = Sys.getenv('R_LIBS_USER'))"
 ```
+
+You may sometimes need to use the `configure.args` or `configure.vars` argument to provide information on the location of `include` and `lib` directories of dependencies. The Savio help email can provide support for complicated installations.
 
 # Installation for an entire group
 
-You can follow the approaches on the previous slides, but have your installation directory be on /home/projects/${GROUP} or /scratch/users/${USER} as well.
+You can follow the approaches on the previous slides, but have your installation directory be on /global/home/groups/${GROUP} or /global/scratch/${USER} as well.
 
 If you change the UNIX permissions of the installed files to allow your group members access, then they should be able to use the software too.
 
 For example:
+
+[[[ Question for Krishna or Yong: would this work or would I need to change 'x' permissions for parent directories ]]]
+
 ```
+PKG=rgeos
 chmod g+r -R ~/software/${PKG}
 chmod g+x ~/software/${PKG}/bin
 ``
-will allow reading by group members for all files in the directory and the `g+x` is done on the executables in `bin`.
+
+This will allow reading by group members for all files in the directory and execution for the group members on the executables in `bin`.
 
 You may also want to set up your own module that allows you to easily set your environment so that the software is accessible for you (and possibly others in your group). To do this you need to:
 
-  - create a directory in which you store module files and add that directory to the MODULEPATH variable (e.g., in your .bashrc)
-       - ```export MODULEPATH=$MODULEPATH:~/location/of/my/modulefiles```
-  - create a module file for the software and version that you have installed
-       - ```mkdir $MODULEPATH/tensorflow```
-       - now edit the file for the version you want to add, e.g., `$MODULEPATH/tensorflow/0.10.0`
+First we'll need a directory in which to store our module files:
 
-An example module file is `example-modulefile`.  There is also some high-level information on 
+```
+MPATH=~/software/modfiles
+mkdir ${MPATH}
+export MODULEPATH=${MODULEPATH}:${MPATH}  # good to put this in your .bashrc
+mkdir ${MPATH}/geos
+```
+
+Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit  `${MPATH/geos/3.5.0` based on looking at examples of other module files. 
+
+An example module file is `example-modulefile`.  Or see some of the Savio system-level modules in `/global/software/sl-6.x86_64/modfiles/langs`. 
+
+```
+cat /global/software/sl-6.x86_64/modfiles/langs/python/2.7.8
+```
+
+There is also some high-level information on modules in [http://research-it.berkeley.edu/services/high-performance-computing/accessing-and-installing-software#Chaining](http://research-it.berkeley.edu/services/high-performance-computing/accessing-and-installing-software#Chaining).
 
 # Parallel processing terminology
 
@@ -260,7 +290,7 @@ When submitting a job, the main things you need to indicate are the project acco
 You can see what accounts you have access to and which partitions within those accounts as follows:
 
 ```
-sacctmgr -p show associations user=SAVIO_USERNAME
+sacctmgr -p show associations user=${USER}
 ```
 
 Here's an example of the output for a user who has access to an FCA, a condo, and a special partner account:
@@ -395,7 +425,18 @@ str2num(getenv('SLURM_NTASKS')))        ## MATLAB
 
 To use multiple cores on a node (and thereby fully utilize the node that will be exclusively assigned to your job), be careful if you only specify `--nodes`, as the environment variables will only indicate one task per node.
 
+You can experiment with what environment variables as follows:
 
+```
+cat > env.sh <<EOF
+#!/bin/bash
+env >> env.out
+EOF
+
+sbatch -A co_stat -p savio --ntasks-per-node=5 --cpus-per-task=4 -N 2 -t 0:05 env.sh
+
+cat env.out | grep SLURM
+```
 
 # Example use of standard software: Python
 
@@ -432,11 +473,13 @@ sleep 15  # wait until all engines have successfully started
 ipython
 ```
 
+Note that none of the above stanza involving the cluster startup is necessary if using ipython parallel through Savio's JupyterHub portal.
+
 If we were doing this on a single node, we could start everything up in a single call to *ipcluster*:
 
 ```
 module load python/2.7.8 ipython
-ipcluster start -n $SLURM_CPUS_ON_NODE &
+ipcluster start -n $SLURM_NTASKS_PER_NODE &
 ipython
 ```
 
@@ -492,13 +535,63 @@ ipcluster stop
 
 # Example use of standard software: Python via JupyterHub
 
-[ HELP!! need template / instructions for use from Yong ]
+This is still in its test phase but will be a new service offering from Savio.
+
+Connect to [https://ln000.brc.berkeley.edu](https://ln000.brc.berkeley.edu) (this is the test site, once we decide to push it to production and once we have the hardware in place we will replace it). Note currently we are using a self-signed SSL certificate so you will need to accept it. We will get a valid certificate once it goes into production.
+
+2. Just after logging in with your BRC username and one-time password (OTP), the initial Jupyter screen presents a "Start My Server" button. Click that button.
+
+3. On the next screen, "Spawner options", you will see a dropdown box to select how you want the Notebook server to be spawned. By default you should select "Local Server" for testing purpose. If you have the requirement to run serious compute with the Notebook it is recommended to select "Savio" or "Savio2" which will spawn into Savio and Savio2 partitions respectively. Currently these two options are limited to a single node and 8 hours of runtime.
+
+4. Select "Local Server" and now you should land in the home directory. From the "New" dropdown menu (next to 'Upload' near the top right of the screen) select "Python 2" and you should be in a Notebook with full support of the python/2.7.8 module tree. Don't select "Python 3" which is just there to support Jupyter and is not a complete environment. We will fix that later.
 
 # Example of hybrid parallelization with Python using threaded linear algebra
 
-[ CP to work through this - check that threaded ATLAS is used ]
+Here we'll run a job that uses multiple threads for linear algebra. 
 
+```
+srun -A co_stat -p savio --ntasks-per-node=1 --cpus-per-task=4 -N 1 -t 5:00
+module load python/2.7.8 numpy
+python < linear_algebra.py &
+top  # should see 400% CPU in use 
+```
 
+Suppose our parallel computational tasks each did linear algebra and we wanted to run multiple computational tasks, each with multiple cores for the linear algebra. 
+
+We can set up an iPython parallel cluster as previously but making sure we have multiple cores per. 
+
+[[NEED TO TEST THIS]]
+
+```
+#!/bin/bash
+# Job name:
+#SBATCH --job-name=test
+#
+# Account:
+#SBATCH --account=co_stat
+#
+# Partition:
+#SBATCH --partition=savio2
+#
+# Number of tasks (2 nodes' worth)
+#SBATCH --ntasks-per-node=12
+#
+# Processors per task:
+#SBATCH --cpus-per-task=4
+#
+# Wall clock limit:
+#SBATCH --time=04:00:00
+#
+module load python/2.7.8 ipython gcc openmpi
+ipcontroller --ip='*' &
+sleep 5
+srun ipengine &  # will start as many ipengines as we have SLURM tasks because srun is a SLURM command
+sleep 15  # wait until all engines have successfully started
+ipython
+ipcluster start -n $SLURM_NTASKS &
+ipython < parallel.py >& parallel.out
+ipcluster stop
+```
 
 # Example use of standard software: R
 
@@ -580,7 +673,32 @@ results
 
 # Example of hybrid parallelization with R using threaded linear algebra
 
-[ CP to work through this if Python+linear algebra example doesn't pan out]
+If you have parallel R code (e.g., with foreach) for which the computational tasks use linear algebra, you can also use a hybrid parallelization approach. 
+
+[[NEED TO TEST THIS]]
+
+#!/bin/bash
+# Job name:
+#SBATCH --job-name=test
+#
+# Account:
+#SBATCH --account=co_stat
+#
+# Partition:
+#SBATCH --partition=savio2
+#
+# Number of tasks (2 nodes' worth)
+#SBATCH --ntasks-per-node=12
+#
+# Processors per task:
+#SBATCH --cpus-per-task=4
+#
+# Wall clock limit:
+#SBATCH --time=04:00:00
+#
+module load r
+mpirun R CMD BATCH --no-save parallel-multi-linalg.R parallel-multi-linalg.Rout &
+
 
 
 # High-throughput computing
@@ -615,7 +733,11 @@ More details are given in [the Savio tip on "How to run High-Throughput Computin
 
 - Upcoming events (ask A Culich)
 
-- [insert link to Savio impacts form] (ask S Masover)
+- Please help us justify the campus investment in Savio (and keep it available in the future) by [telling us how BRC impacts your research](https://docs.google.com/a/berkeley.edu/forms/d/e/1FAIpQLSdqhh2A77-l8N3eOcOzrH508UKfhIvPn8h5gLDUJ9XrRLvA5Q/viewform), e.g., through
+   - publications about research supported by BRC
+   - grants for research that will be supported by BRC resources or consulting
+   - recruitment or retention cases in which BRC resources/services play a role
+   - classes that will be supported by the BRC program
 
 - Please fill out an evaluation form
 
