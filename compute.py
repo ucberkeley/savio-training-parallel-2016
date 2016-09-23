@@ -24,4 +24,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     out = calculate(int(args.id), int(args.size), float(args.mean), float(args.sd))
     file = open(args.path + "/output" + args.id + ".txt", "w")
-    file.write("%s,%s" % (out))
+    file.write("%s,%s\n" % (out))

@@ -3,16 +3,8 @@
 
 # Status
 
- - Chris will be working through this first draft to finalize existing content Wed/Thu
- - major gaps
-     - JupyterHub worked example
-     - ht-helper example
- - looking for feedback
-     - examples of using other build systems
-     - examples of things that can arise when managing dependencies amongst user-installed software (any things other than setting PATH or LD_LIBRARY_PATH?)
-     - parallelization strategies
-     - real-world Python or R examples would be nice but could also be overly involved
-
+ - full draft complete and Chris is testing the examples; he still needs to do a read-through with editing
+ - any suggestions on content or phrasing welcome; don't bother word-smithing as I haven't done a careful read-through
 
 # Introduction
 
@@ -21,6 +13,8 @@ We'll do this mostly as a demonstration. I encourage you to login to your accoun
 Some of this material is based on the extensive Savio documention we have prepared and continue to prepare, available at [http://research-it.berkeley.edu/services/high-performance-computing/user-guide](http://research-it.berkeley.edu/services/high-performance-computing/user-guide).
 
 The materials for this tutorial are available using git at [https://github.com/ucberkeley/savio-training-parallel-2016](https://github.com/ucberkeley/savio-training-parallel-2016) or simply as a [zip file](https://github.com/ucberkeley/savio-training-parallel-2016/archive/master.zip).
+
+These *parallel.html* and *parallel_slides.html* files were created from *parallel.md* by running *make all* (see *Makefile*).
 
 Please see this [zip file](https://github.com/ucberkeley/savio-training-parallel-2016/archive/master.zip) for materials from our introductory training on August 2, including accessing Savio, data transfer, and basic job submission.
 
@@ -31,9 +25,8 @@ This training session will cover the following topics:
 
  - Software installation
      - Installing third-party software
-     - Build systems other than autoconf+make?
      - Installing Python and R packages that rely on third-party software
-         - Python example?
+         - Python example
          - R example
  - Parallelization strategies
      - Some general principles and concepts    
@@ -47,11 +40,13 @@ This training session will cover the following topics:
      - SLURM environment variables
  - Basic parallelization in Python and R
      - iPython examples
-         - JupyterHub
-         - threaded linear algebra
+         - basic example on one node
+         - basic example on multiple nodes
+         - hybrid parallelization example: threaded linear algebra
      - R examples
- - High-throughput computing with ht_helper
-     - example [HELP!!]  
+         - basic example on one node
+         - basic example on multiple nodes
+ - High-throughput computing with ht_helper  
  - Wrap-up
 
 
@@ -67,7 +62,21 @@ A common installation approach is the GNU build system (Autotools), which involv
   - make: this compiles the source code in the software
   - make install: this moves the compiled code (library files) and include files and the like to their permanent home 
 
-Here's an example of you might install a piece of software in your home directory
+Here's are a couple examples of installing a piece of software in your home directory
+
+```
+cd ~/software/src
+PKG=yaml
+V=0.1.7
+INSTALLDIR=~/software/${PKG}
+wget http://pyyaml.org/download/libyaml/${PKG}-${V}.tar.gz
+tar -xvzf ${PKG}-${V}.tar.gz
+cd ${PKG}-${V}
+./configure  --prefix=$INSTALLDIR | tee ../configure.log
+make | tee ../make.log
+make install ../make.log
+```
+
 
 ```
 mkdir software; cd software
@@ -84,18 +93,6 @@ make | tee ../make.log
 make install | tee ../install.log
 ```
 
-```
-cd ~/software/src
-PKG=yaml
-V=0.1.7
-INSTALLDIR=~/software/${PKG}
-wget http://pyyaml.org/download/libyaml/${PKG}-${V}.tar.gz
-tar -xvzf ${PKG}-${V}.tar.gz
-cd ${PKG}-${V}
-./configure  --prefix=$INSTALLDIR | tee ../configure.log
-make | tee ../make.log
-make install ../make.log
-```
 
 For Cmake, the following may work:
 ```
@@ -113,9 +110,10 @@ export LD_LIBRARY_PATH=${INSTALLDIR}/lib:${LD_LIBRARY_PATH}
 
 This is because Linux only looks in certain directories for the location of .so library files.
 
-In other cases you might need to add the location of an executable to your PATH variable so that the operating system can find the executable. Linux only looks in certain directories for executables.
+You might also need to add the location of an executable to your PATH variable so that the operating system can find the executable (including in some cases when installing additional software that uses the package). Linux only looks in certain directories for executables.
 
 ```
+# needed in the geos example to install the rgeos R package
 export PATH=${INSTALLDIR}/bin:${PATH}
 ```
 
@@ -130,14 +128,17 @@ PYPKG=pyyaml
 pip install --user ${PYPKG}
 ls .local/lib/python2.7/site-packages
 # needs to find header files
-pip install --user --ignore-installed --global-option=build_ext  --global-option="-I/${INSTALLDIR}/include" ${PYPKG}
+pip install --user --ignore-installed --global-option=build_ext  \
+    --global-option="-I/${INSTALLDIR}/include" ${PYPKG}
 # no -lyaml (needs to find library) files 
 # in this case setting LD_LIBRARY_PATH does not work for some reason
-pip install --user --ignore-installed --global-option=build_ext --global-option="-I/${INSTALLDIR}/include" --global-option="-L/${INSTALLDIR}/lib" ${PYPKG}
+pip install --user --ignore-installed --global-option=build_ext \
+    --global-option="-I/${INSTALLDIR}/include" \
+    --global-option="-L/${INSTALLDIR}/lib" ${PYPKG}
 ```
 
 ```
-# in this case, setting LD_LIBRARY_PATH works
+# in this case, setting LD_LIBRARY_PATH works (and we also need to have set PATH)
 module load R
 Rscript -e "install.packages('rgeos', repos = 'http://cran.cnr.berkeley.edu', lib = Sys.getenv('R_LIBS_USER'))"
 ```
@@ -146,7 +147,7 @@ You may sometimes need to use the `configure.args` or `configure.vars` argument 
 
 # Installation for an entire group
 
-You can follow the approaches on the previous slides, but have your installation directory be on /global/home/groups/${GROUP} or /global/scratch/${USER} as well.
+You can follow the approaches on the previous slides, but have your installation directory be on `/global/home/groups/${GROUP}` or `/global/scratch/${USER}` instead.
 
 If you change the UNIX permissions of the installed files to allow your group members access, then they should be able to use the software too.
 
@@ -158,7 +159,7 @@ For example:
 PKG=rgeos
 chmod g+r -R ~/software/${PKG}
 chmod g+x ~/software/${PKG}/bin
-``
+```
 
 This will allow reading by group members for all files in the directory and execution for the group members on the executables in `bin`.
 
@@ -173,9 +174,9 @@ export MODULEPATH=${MODULEPATH}:${MPATH}  # good to put this in your .bashrc
 mkdir ${MPATH}/geos
 ```
 
-Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit  `${MPATH/geos/3.5.0` based on looking at examples of other module files. 
+Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit  `${MPATH}/geos/3.5.0` based on looking at examples of other module files. 
 
-An example module file is `example-modulefile`.  Or see some of the Savio system-level modules in `/global/software/sl-6.x86_64/modfiles/langs`. 
+An example module file is *example-modulefile*.  Or see some of the Savio system-level modules in `/global/software/sl-6.x86_64/modfiles/langs`. 
 
 ```
 cat /global/software/sl-6.x86_64/modfiles/langs/python/2.7.8
@@ -190,8 +191,7 @@ units available on a single node.
   - *nodes*: We'll use this term to mean the different computers,
 each with their own distinct memory, that make up a cluster or supercomputer.
   - *processes* or *SLURM tasks*: computational instances executing on a machine; multiple
-processes may be executing at once. A given program may start up multiple
-processes at once. Ideally we have no more processes than cores on
+processes may be executing at once. Ideally we have no more processes than cores on
 a node.
   - *threads*: multiple paths of execution within a single process;
 the OS sees the threads as a single process, but one can think of
@@ -208,6 +208,8 @@ your computation.
 
 [UNDER CONSTRUCTION - feedback welcome (looking primarily for content feedback at this point)]
 
+# Parallelization strategies (1)
+
 Should I use one machine/node or many machines/nodes?
 
  - If you can do your computation on the cores of a single node using
@@ -220,6 +222,8 @@ a single machine with a lot of memory.
 need to use distributed memory.
  - If you have so much data that you overwhelm the amount that can fit in RAM on one machine, Spark may be useful.
  - If you have data that will fit in memory on one machine, Python, MATLAB, C/C++, and R may be your best bet.
+
+# Parallelization strategies (2)
 
 What level or dimension should I parallelize over?
 
@@ -235,6 +239,8 @@ load-balanced and does not involve too much communication.
  - If you have a small-ish number of long task, then a hybrid parallelization scheme may make sense.
  - E.g., if each task involves substantial linear algebra, you might have multiple cores on a node assigned to each task so that the linear algebra can be done in parallel.
 
+# Parallelization strategies (3)
+
 How do I balance communication overhead with keeping my cores busy?
 
  - If you have very few tasks, particularly if the tasks take different
@@ -244,6 +250,8 @@ poorly load-balanced.
 overhead of starting and stopping the tasks will reduce efficiency.
  - Avoid having a very small number of jobs, each of which (or some of which) take hours to days to run
  - Avoid having a very large number of jobs, each of which takes milliseconds to run
+
+# Parallelization strategies (4)
 
 Should multiple tasks be pre-assigned to a process (i.e., a worker) (sometimes called *prescheduling*) or should tasks
 be assigned dynamically as previous tasks finish? 
@@ -260,22 +268,24 @@ tasks should be prescheduled. E.g., `library(Rmpi); help(mpi.parSapply)` gives s
 
  - shared memory parallelization (one machine, multiple cores)
     - threaded linear algebra in R, Python, MATLAB 
-        -(for R and Python, they need to be installed with parallel linear algebra support from OpenBLAS or MKL)
+        - R and Python require specific installation with parallel linear algebra support from BLAS packages such as OpenBLAS or MKL
     - parallelization of independent computations
-        - iPython (example below) or other Python packages (e.g., `pp`, `multiprocessing`)
-        - various R packages (foreach + doParallel, mclapply, parLapply)
-        - parfor in MATLAB
+        - iPython (example below) or other Python packages (e.g., *pp*, *multiprocessing*)
+        - various R packages (*foreach* + *doParallel*, *mclapply*, *parLapply*)
+        - *parfor* in MATLAB
     - openMP for writing threaded code in C/C++
-    - GPUs: various machine learning packages with GPU back-end support, direct coding in CUDA or openCL
+    - GPUs: 
+        - various machine learning packages with GPU back-end support
+        - direct coding in CUDA or openCL
 
- - distributed parallelization (multiple machines (nodes))
+ - distributed parallelization (multiple nodes)
     - parallelization of independent computations
         - iPython
-        - various R packages (foreach + doMPI, foreach + doSNOW, pbdR)
-        - parfor in MATLAB with MATLAB DCS
+        - various R packages (*foreach* + *doMPI*, *foreach* + *doSNOW*, *pbdR*)
+        - *parfor* in MATLAB with MATLAB DCS
     - MPI for more tightly-coupled parallelization
         - MPI in C/C++
-        - mpi4py for Python
+        - *mpi4py* for Python
         - pbdR (pbdMPI) and Rmpi for R
     - Spark/Hadoop for parallelized MapReduce computations across multiple nodes
         - data spread across multiple nodes and read into collective memory
@@ -357,11 +367,11 @@ Note that except for the *savio2_htc*  and *savio2_gpu* partitions, all jobs are
 
 If you are submitting a job that uses multiple nodes, you'll need to carefully specify the resources you need. The key flags for use in your job script are:
 
- - `--nodes` (or `-N`): indicates the number of nodes to use
- - `--ntasks-per-node`: indicates the number of tasks (i.e., processes) one wants to run on each node
- - `--cpus-per-task` (or `-c`): indicates the number of cpus to be used for each task
+ - `--nodes` (or `-N`): number of nodes to use
+ - `--ntasks-per-node`: number of SLURM tasks (i.e., processes) one wants to run on each node
+ - `--cpus-per-task` (or `-c`): number of cpus to be used for each task
 
-In addition, in some cases it can make sense to use the `--ntasks` (or `-n`) option to indicate the total number of tasks and let the scheduler determine how many nodes and tasks per node are needed. In general `--cpus-per-task` will be 1 except when running threaded code.  
+In addition, in some cases it can make sense to use the `--ntasks` (or `-n`) option to indicate the total number of SLURM tasks and let the scheduler determine how many nodes and tasks per node are needed. In general `--cpus-per-task` will be 1 except when running threaded code.  
 
 
 Here's an example job script for a job that uses MPI for parallelizing over multiple nodes:
@@ -393,12 +403,12 @@ Here's an example job script for a job that uses MPI for parallelizing over mult
 
 Some common paradigms are:
 
- - MPI jobs that use *one* CPU per task for each of *n* tasks
+ - MPI jobs that use *one* CPU per task for each of *n* SLURM tasks
      - `--ntasks=n --cpus-per-task=1` 
      - `--nodes=x --ntasks-per-node=y --cpus-per-task=1` (assuming that `n = x*y`)
- - openMP/threaded jobs that use *c* CPUs for *one* task
+ - openMP/threaded jobs that use *c* CPUs for *one* SLURM task
      - `--nodes=1 --ntasks-per-node=1 --cpus-per-task=c` 
- - hybrid parallelization jobs (e.g., MPI+threading) that use *c* CPUs for each of *n* tasks
+ - hybrid parallelization jobs (e.g., MPI+threading) that use *c* CPUs for each of *n* SLURM tasks
      - `--ntasks=n --cpus-per-task=c`
      - `--nodes=x --ntasks-per-node=y cpus-per-task=c` (assuming that `y*c` equals the number of cores on a node and that `n = x*y` equals the total number of tasks
 
@@ -433,14 +443,15 @@ cat > env.sh <<EOF
 env >> env.out
 EOF
 
-sbatch -A co_stat -p savio --ntasks-per-node=5 --cpus-per-task=4 -N 2 -t 0:05 env.sh
+sbatch -A co_stat -p savio --ntasks-per-node=5 --cpus-per-task=4 \
+       -N 2 -t 0:05 env.sh
 
 cat env.out | grep SLURM
 ```
 
 # Example use of standard software: Python
 
-Let's see a basic example of doing an analysis in Python across multiple cores on multiple nodes. We'll use the airline departure data in *bayArea.csv*.
+Let's see a basic example of doing an analysis in Python across multiple cores on multiple nodes. We'll use the airline departure data in */global/scratch/paciorek/bayArea.csv* (which should be readable by other users).
 
 Here we'll use *IPython* for parallel computing. The example is a bit contrived in that a lot of the time is spent moving data around rather than doing computation, but it should illustrate how to do a few things.
 
@@ -448,7 +459,7 @@ First we'll install a Python package not already available as a module.
 
 ```
 # remember to do I/O off scratch
-cp bayArea.csv /global/scratch/paciorek/.
+ls -l /global/scratch/paciorek/bayArea.csv # check file is there
 # install Python package
 module load pip
 # trial and error to realize which package dependencies available in modules...
@@ -468,22 +479,15 @@ Now we'll start up a cluster using IPython's parallel tools. To do this across m
 module load python/2.7.8 ipython gcc openmpi
 ipcontroller --ip='*' &
 sleep 5
-srun ipengine &  # will start as many ipengines as we have SLURM tasks because srun is a SLURM command
+# next line will start as many ipengines as we have SLURM tasks 
+#   because srun is a SLURM command
+srun ipengine &  
 sleep 15  # wait until all engines have successfully started
 ipython
 ```
 
-Note that none of the above stanza involving the cluster startup is necessary if using ipython parallel through Savio's JupyterHub portal.
 
-If we were doing this on a single node, we could start everything up in a single call to *ipcluster*:
-
-```
-module load python/2.7.8 ipython
-ipcluster start -n $SLURM_NTASKS_PER_NODE &
-ipython
-```
-
-Here's our Python code (also found in *parallel.py*) for doing an analysis across multiple strata/subsets of the dataset in parallel. Note that the 'load_balanced_view' business is so that the computations are done in a load-balanced fashion, which is important for tasks that take different amounts of time to complete.
+Here's our Python code (also found in *parallel.py*) for doing an analysis across multiple strata/subsets of the dataset in parallel. Note that the 'load_balanced_view' syntax is so that the computations are done in a load-balanced fashion, which is important for tasks that take different amounts of time to complete.
 
 ```
 from IPython.parallel import Client
@@ -499,7 +503,12 @@ lview.block = True
 
 import pandas
 dat = pandas.read_csv('bayArea.csv', header = None)
-dat.columns = ('Year','Month','DayofMonth','DayOfWeek','DepTime','CRSDepTime','ArrTime','CRSArrTime','UniqueCarrier','FlightNum','TailNum','ActualElapsedTime','CRSElapsedTime','AirTime','ArrDelay','DepDelay','Origin','Dest','Distance','TaxiIn','TaxiOut','Cancelled','CancellationCode','Diverted','CarrierDelay','WeatherDelay','NASDelay','SecurityDelay','LateAircraftDelay')
+dat.columns = ('Year','Month','DayofMonth','DayOfWeek','DepTime','CRSDepTime',
+'ArrTime','CRSArrTime','UniqueCarrier','FlightNum','TailNum',
+'ActualElapsedTime','CRSElapsedTime','AirTime','ArrDelay','DepDelay',
+'Origin','Dest','Distance','TaxiIn','TaxiOut','Cancelled','CancellationCode',
+'Diverted','CarrierDelay','WeatherDelay','NASDelay','SecurityDelay',
+'LateAircraftDelay')
 
 dview.execute('import statsmodels.api as sm')
 
@@ -533,11 +542,24 @@ And we'll stop our cluster.
 ipcluster stop
 ```
 
+# Modifications to the example for single node or JupyterHub use
+
+Note that none of the stanza involving the cluster startup with *ipcontroller* and *ipengine* nor the use of `ipcluster start` is necessary if using ipython parallel through Savio's JupyterHub portal.
+
+If we were running the job on a single node, we could start everything up in a single call to *ipcluster* without the need for *ipcontroller* and *ipengine*:
+
+```
+module load python/2.7.8 ipython
+ipcluster start -n $SLURM_NTASKS_PER_NODE &
+ipython
+```
+
+
 # Example use of standard software: Python via JupyterHub
 
 This is still in its test phase but will be a new service offering from Savio.
 
-Connect to [https://ln000.brc.berkeley.edu](https://ln000.brc.berkeley.edu) (this is the test site, once we decide to push it to production and once we have the hardware in place we will replace it). Note currently we are using a self-signed SSL certificate so you will need to accept it. We will get a valid certificate once it goes into production.
+1. Connect to [https://ln000.brc.berkeley.edu](https://ln000.brc.berkeley.edu) (this is the test site, once we decide to push it to production and once we have the hardware in place we will replace it). Note currently we are using a self-signed SSL certificate so you will need to accept it. We will get a valid certificate once it goes into production.
 
 2. Just after logging in with your BRC username and one-time password (OTP), the initial Jupyter screen presents a "Start My Server" button. Click that button.
 
@@ -558,9 +580,9 @@ top  # should see 400% CPU in use
 
 Suppose our parallel computational tasks each did linear algebra and we wanted to run multiple computational tasks, each with multiple cores for the linear algebra. 
 
-We can set up an iPython parallel cluster as previously but making sure we have multiple cores per. 
+We can set up an iPython parallel cluster as previously but making sure we have multiple cores per computational task. Note that an example *hybrid.py* does not actually exist. 
 
-[[NEED TO TEST THIS]]
+
 
 ```
 #!/bin/bash
@@ -589,7 +611,7 @@ srun ipengine &  # will start as many ipengines as we have SLURM tasks because s
 sleep 15  # wait until all engines have successfully started
 ipython
 ipcluster start -n $SLURM_NTASKS &
-ipython < parallel.py >& parallel.out
+ipython < hybrid.py >& hybrid.out  
 ipcluster stop
 ```
 
@@ -601,9 +623,9 @@ We'll do this interactively though often this sort of thing would be done via a 
 
 ```
 # remember to do I/O off scratch
-cp bayArea.csv /global/scratch/paciorek/.
 module load r Rmpi
-Rscript -e "install.packages('doMPI', repos = 'http://cran.cnr.berkeley.edu', lib = '/global/home/users/paciorek/R/x86_64-pc-linux-gnu-library/3.2')"
+Rscript -e "install.packages('doMPI', repos = 'http://cran.cnr.berkeley.edu', 
+        lib = '/global/home/users/paciorek/R/x86_64-pc-linux-gnu-library/3.2')"
 
 srun -A co_stat -p savio2  -N 3 --ntasks-per-node=24 -t 30:0 --pty bash
 module load gcc openmpi r Rmpi
@@ -673,10 +695,9 @@ results
 
 # Example of hybrid parallelization with R using threaded linear algebra
 
-If you have parallel R code (e.g., with foreach) for which the computational tasks use linear algebra, you can also use a hybrid parallelization approach. 
+If you have parallel R code (e.g., with foreach + doMPI or foreach + doSNOW) for which the computational tasks use linear algebra, you can also use a hybrid parallelization approach as outlined here. Note that the example file `parallel-multi-linalg.R` does not exist.
 
-[[NEED TO TEST THIS]]
-
+```
 #!/bin/bash
 # Job name:
 #SBATCH --job-name=test
@@ -688,7 +709,7 @@ If you have parallel R code (e.g., with foreach) for which the computational tas
 #SBATCH --partition=savio2
 #
 # Number of tasks (2 nodes' worth)
-#SBATCH --ntasks-per-node=12
+#SBATCH --ntasks=12
 #
 # Processors per task:
 #SBATCH --cpus-per-task=4
@@ -697,8 +718,9 @@ If you have parallel R code (e.g., with foreach) for which the computational tas
 #SBATCH --time=04:00:00
 #
 module load r
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 mpirun R CMD BATCH --no-save parallel-multi-linalg.R parallel-multi-linalg.Rout &
-
+```
 
 
 # High-throughput computing
@@ -712,12 +734,32 @@ Here are some options:
      - some description in this document  
      - Chris Paciorek's tutorials on using [single-node parallelism](https://github.com/berkeley-scf/tutorial-parallel-basics) and [multiple-node parallelism](https://github.com/berkeley-scf/tutorial-parallel-distributed) in Python, R, and MATLAB
 
-# ht-helper
+# ht_helper
  
+The basic idea of ht_helper is to start up a single job and within that job cycle through all of your computational tasks. 
+
+This has a few benefits
+
+ - uses all the cores on node even if each computational task is serial or only needs a few cores
+ - systematically processes many computational tasks as a single job for ease of management
+ - avoids overloading the scheduler with thousands of jobs as the scheduler is not designed to handle that load
+
 More details are given in [the Savio tip on "How to run High-Throughput Computing ..."](http://research-it.berkeley.edu/services/high-performance-computing/tips-using-brc-savio-cluster)
 
-[HELP!! - need good example and, ideally, existing code from Yong or Krishna]
+# ht_helper example
 
+To use `ht_helper.sh` we need a *taskfile* with one line per task. Generally one would programmatically generate this file, as I've done with `generate_taskfile.py`.
+
+We can see that each line is uniquely identified by a different id, which is passed into the Python code file, `compute.py`.
+
+Finally, we can look at the Python code file to see how each individual task is done. We write the output for each task to a separate file (as a simple way to avoid collisions in writing to a single output file; see below for an alternative) and then we can post-process the files to collect our results. 
+
+Here's how we might post-process in this simple situation:
+```
+cat exp_output1/* >> exp_output1_final
+```
+
+If you'd like to have all the tasks write to a common file, you'll want to lock the file while each file is writing to it. See *lock_example.py* for one way to do this.
 
 # How to get additional help
 
@@ -734,10 +776,10 @@ More details are given in [the Savio tip on "How to run High-Throughput Computin
 - Upcoming events (ask A Culich)
 
 - Please help us justify the campus investment in Savio (and keep it available in the future) by [telling us how BRC impacts your research](https://docs.google.com/a/berkeley.edu/forms/d/e/1FAIpQLSdqhh2A77-l8N3eOcOzrH508UKfhIvPn8h5gLDUJ9XrRLvA5Q/viewform), e.g., through
-   - publications about research supported by BRC
-   - grants for research that will be supported by BRC resources or consulting
-   - recruitment or retention cases in which BRC resources/services play a role
-   - classes that will be supported by the BRC program
+    - publications about research supported by BRC
+    - grants for research that will be supported by BRC resources or consulting
+    - recruitment or retention cases in which BRC resources/services play a role
+    - classes that will be supported by the BRC program
 
 - Please fill out an evaluation form
 
