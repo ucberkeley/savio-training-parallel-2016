@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 def calculate(i, n, m, sd):
-    numpy.random.seed(i)  # careful, this doesn't guarantee truly independent draws across the various calls to calculate() with different 'i' values
+    np.random.seed(i)  # careful, this doesn't guarantee truly independent draws across the various calls to calculate() with different 'i' values
     mat = np.random.normal(m, sd, size = (n,n))
     C = mat.T.dot(mat)
     vals = np.linalg.eigvalsh(C) 
@@ -22,6 +22,6 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--path', default='.',
         help='path to write output files to')
     args = parser.parse_args()
-    out = calculate(int(args.i), int(args.size), float(args.mean), float(args.sd))
+    out = calculate(int(args.id), int(args.size), float(args.mean), float(args.sd))
     file = open(args.path + "/output" + args.id + ".txt", "w")
     file.write("%s,%s" % (out))

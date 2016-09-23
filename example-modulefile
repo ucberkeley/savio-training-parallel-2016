@@ -1,0 +1,11 @@
+#%Module1.0
+proc ModulesHelp { } {
+  puts stderr "This module sets up geos in your environment."
+}
+
+module-whatis "geos 3.5.0"
+
+prepend-path PATH ~/software/geos/bin
+prepend-path LD_LIBRARY_PATH ~/software/geos/lib
+
+
