@@ -22,7 +22,7 @@
 <p>We'll do this mostly as a demonstration. I encourage you to login to your account and try out the various examples yourself as we go through them.</p>
 <p>Some of this material is based on the extensive Savio documention we have prepared and continue to prepare, available at <a href="http://research-it.berkeley.edu/services/high-performance-computing/user-guide">http://research-it.berkeley.edu/services/high-performance-computing/user-guide</a>.</p>
 <p>The materials for this tutorial are available using git at <a href="https://github.com/ucberkeley/savio-training-parallel-2016">https://github.com/ucberkeley/savio-training-parallel-2016</a> or simply as a <a href="https://github.com/ucberkeley/savio-training-parallel-2016/archive/master.zip">zip file</a>.</p>
-<p>These <em>parallel.html</em> and <em>parallel_slides.html</em> files were created from <em>parallel.md</em> by running <em>make all</em> (see <em>Makefile</em>).</p>
+<p>These <em>parallel.html</em> and <em>parallel_slides.html</em> files were created from <em>parallel.md</em> by running <code>make all</code> (see <em>Makefile</em> for details on how that creates the html files).</p>
 <p>Please see this <a href="https://github.com/ucberkeley/savio-training-parallel-2016/archive/master.zip">zip file</a> for materials from our introductory training on August 2, including accessing Savio, data transfer, and basic job submission.</p>
 <h1 id="outline">Outline</h1>
 <p>This training session will cover the following topics:</p>
@@ -79,29 +79,36 @@
 <li>make install: this moves the compiled code (library files) and include files and the like to their permanent home</li>
 </ul>
 <p>Here's are a couple examples of installing a piece of software in your home directory</p>
-<pre><code>cd ~/software/src
+<pre><code>mkdir software 
+mkdir src  # set up directory for source packages
+# install yaml, an optional dependency for Python yaml package
+cd src
 PKG=yaml
+mkdir ${PKG}
+cd ${PKG}
 V=0.1.7
 INSTALLDIR=~/software/${PKG}
 wget http://pyyaml.org/download/libyaml/${PKG}-${V}.tar.gz
 tar -xvzf ${PKG}-${V}.tar.gz
 cd ${PKG}-${V}
+# --prefix is key to install in directory you have access to
 ./configure  --prefix=$INSTALLDIR | tee ../configure.log
 make | tee ../make.log
-make install ../make.log</code></pre>
-<pre><code>mkdir software; cd software
-mkdir src; cd src  # set up a directory for source packages
+make install | tee ../install.log</code></pre>
+<pre><code>cd ~/src
 # install geos, needed for rgeos R package
 V=3.5.0
 PKG=geos
+mkdir ${PKG}
+cd ${PKG}
 INSTALLDIR=~/software/${PKG}
 wget http://download.osgeo.org/${PKG}/${PKG}-${V}.tar.bz2
 tar -xvjf ${PKG}-${V}.tar.bz2
 cd ${PKG}-${V}
-./configure --prefix=$INSTALLDIR | tee ../configure.log   # --prefix is key to install in directory you have access to
+./configure --prefix=$INSTALLDIR | tee ../configure.log   
 make | tee ../make.log
 make install | tee ../install.log</code></pre>
-<p>For Cmake, the following may work:</p>
+<p>For Cmake, the following may work (this is not a worked example, just some template code):</p>
 <pre><code>$PKG=foo
 INSTALLDIR=~/software/${PKG}
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} . | tee ../cmake.log</code></pre>
@@ -111,34 +118,39 @@ export LD_LIBRARY_PATH=${INSTALLDIR}/lib:${LD_LIBRARY_PATH}</code></pre>
 <p>This is because Linux only looks in certain directories for the location of .so library files.</p>
 <p>You might also need to add the location of an executable to your PATH variable so that the operating system can find the executable (including in some cases when installing additional software that uses the package). Linux only looks in certain directories for executables.</p>
 <pre><code># needed in the geos example to install the rgeos R package
-export PATH=${INSTALLDIR}/bin:${PATH}</code></pre>
+export PATH=${INSTALLDIR}/bin:${PATH}
+echo ${PATH}</code></pre>
 <h1 id="installing-python-and-r-packages">Installing Python and R packages</h1>
-<p>If you see comments about <code>libfoo.so</code> not found, see above comment about modifying your LD_LIBRARY_PATH environment variable.</p>
+<p>If you see comments about <em>libfoo.so</em> not found, see above comment about modifying your LD_LIBRARY_PATH environment variable.</p>
+<p>If you see comments about <em>.h</em> files not being found, you need to make sure the compiler can find the <em>include</em> directory that contains those files.</p>
 <pre><code>module load python/2.7.8
 module load pip
 PYPKG=pyyaml
+PKGDIR=~/software/yaml
 pip install --user ${PYPKG}
 ls .local/lib/python2.7/site-packages
 # needs to find header files
 pip install --user --ignore-installed --global-option=build_ext  \
-    --global-option=&quot;-I/${INSTALLDIR}/include&quot; ${PYPKG}
+    --global-option=&quot;-I/${PKGDIR}/include&quot; ${PYPKG}
 # no -lyaml (needs to find library) files 
 # in this case setting LD_LIBRARY_PATH does not work for some reason
 pip install --user --ignore-installed --global-option=build_ext \
-    --global-option=&quot;-I/${INSTALLDIR}/include&quot; \
-    --global-option=&quot;-L/${INSTALLDIR}/lib&quot; ${PYPKG}</code></pre>
+    --global-option=&quot;-I/${PKGDIR}/include&quot; \
+    --global-option=&quot;-L/${PKGDIR}/lib&quot; ${PYPKG}</code></pre>
 <pre><code># in this case, setting LD_LIBRARY_PATH works (and we also need to have set PATH)
-module load R
+PKGDIR=~/software/geos
+export LD_LIBRARY_PATH=${PKGDIR}/lib:${LD_LIBRARY_PATH}
+export PATH=${PKGDIR}/bin:${PATH}
+module load r
 Rscript -e &quot;install.packages(&#39;rgeos&#39;, repos = &#39;http://cran.cnr.berkeley.edu&#39;, lib = Sys.getenv(&#39;R_LIBS_USER&#39;))&quot;</code></pre>
 <p>You may sometimes need to use the <code>configure.args</code> or <code>configure.vars</code> argument to provide information on the location of <code>include</code> and <code>lib</code> directories of dependencies. The Savio help email can provide support for complicated installations.</p>
 <h1 id="installation-for-an-entire-group">Installation for an entire group</h1>
 <p>You can follow the approaches on the previous slides, but have your installation directory be on <code>/global/home/groups/${GROUP}</code> or <code>/global/scratch/${USER}</code> instead.</p>
 <p>If you change the UNIX permissions of the installed files to allow your group members access, then they should be able to use the software too.</p>
-<p>For example:</p>
-<p>[[[ Question for Krishna or Yong: would this work or would I need to change 'x' permissions for parent directories ]]]</p>
-<pre><code>PKG=rgeos
-chmod g+r -R ~/software/${PKG}
-chmod g+x ~/software/${PKG}/bin</code></pre>
+<p>For example, you would need to do something lik this:</p>
+<pre><code>PKGDIR=rgeos
+chmod g+r -R ~/software/${PKGDIR}
+chmod g+x ~/software/${PKGDIR}/bin/*</code></pre>
 <p>This will allow reading by group members for all files in the directory and execution for the group members on the executables in <code>bin</code>.</p>
 <p>You may also want to set up your own module that allows you to easily set your environment so that the software is accessible for you (and possibly others in your group). To do this you need to:</p>
 <p>First we'll need a directory in which to store our module files:</p>
@@ -146,8 +158,9 @@ chmod g+x ~/software/${PKG}/bin</code></pre>
 mkdir ${MPATH}
 export MODULEPATH=${MODULEPATH}:${MPATH}  # good to put this in your .bashrc
 mkdir ${MPATH}/geos</code></pre>
-<p>Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit <code>${MPATH}/geos/3.5.0</code> based on looking at examples of other module files.</p>
-<p>An example module file is <em>example-modulefile</em>. Or see some of the Savio system-level modules in <code>/global/software/sl-6.x86_64/modfiles/langs</code>.</p>
+<p>Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit <code>${MPATH}/geos/3.5.0</code> based on looking at examples of other module files. An example module file for our geos example is <em>example-modulefile</em>.</p>
+<pre><code>cp example-modfile ${MPATH}/geos/3.5.0</code></pre>
+<p>Or see some of the Savio system-level modules in <code>/global/software/sl-6.x86_64/modfiles/langs</code>.</p>
 <pre><code>cat /global/software/sl-6.x86_64/modfiles/langs/python/2.7.8</code></pre>
 <p>There is also some high-level information on modules in <a href="http://research-it.berkeley.edu/services/high-performance-computing/accessing-and-installing-software#Chaining">http://research-it.berkeley.edu/services/high-performance-computing/accessing-and-installing-software#Chaining</a>.</p>
 <h1 id="parallel-processing-terminology">Parallel processing terminology</h1>
@@ -279,7 +292,7 @@ brc|ac_scsguest|paciorek|savio|1||||||||||||savio_debug,savio_normal|savio_norma
     module load python/3.2.3 numpy
     python3 calc.py &gt;&amp; calc.out</code></pre>
 <p>Now let's submit and monitor the job:</p>
-<pre><code>sbatch job.sh
+<pre><code>sbatch test.sh
 
 squeue -j JOB_ID
 
@@ -293,7 +306,7 @@ wwall -j JOB_ID</code></pre>
 <li><code>--cpus-per-task</code> (or <code>-c</code>): number of cpus to be used for each task</li>
 </ul>
 <p>In addition, in some cases it can make sense to use the <code>--ntasks</code> (or <code>-n</code>) option to indicate the total number of SLURM tasks and let the scheduler determine how many nodes and tasks per node are needed. In general <code>--cpus-per-task</code> will be 1 except when running threaded code.</p>
-<p>Here's an example job script for a job that uses MPI for parallelizing over multiple nodes:</p>
+<p>Here's an example job script (see also <em>mpi-example.sh</em>) for a job that uses MPI for parallelizing over multiple nodes:</p>
 <pre><code>   #!/bin/bash
    # Job name:
    #SBATCH --job-name=test
@@ -321,7 +334,7 @@ wwall -j JOB_ID</code></pre>
 <li>MPI jobs that use <em>one</em> CPU per task for each of <em>n</em> SLURM tasks
 <ul>
 <li><code>--ntasks=n --cpus-per-task=1</code></li>
-<li><code>--nodes=x --ntasks-per-node=y --cpus-per-task=1</code> (assuming that <code>n = x*y</code>)</li>
+<li><code>--nodes=x --ntasks-per-node=y --cpus-per-task=1</code> # assuming that <code>n = x*y</code></li>
 </ul></li>
 <li>openMP/threaded jobs that use <em>c</em> CPUs for <em>one</em> SLURM task
 <ul>
@@ -330,7 +343,7 @@ wwall -j JOB_ID</code></pre>
 <li>hybrid parallelization jobs (e.g., MPI+threading) that use <em>c</em> CPUs for each of <em>n</em> SLURM tasks
 <ul>
 <li><code>--ntasks=n --cpus-per-task=c</code></li>
-<li><code>--nodes=x --ntasks-per-node=y cpus-per-task=c</code> (assuming that <code>y*c</code> equals the number of cores on a node and that <code>n = x*y</code> equals the total number of tasks</li>
+<li><code>--nodes=x --ntasks-per-node=y cpus-per-task=c</code> # assuming that <code>y*c</code> equals the number of cores on a node and that <code>n = x*y</code> equals the total number of tasks</li>
 </ul></li>
 </ul>
 <p>In general, the defaults for the various flags will be 1 so some of the flags above are not strictly needed.</p>
@@ -355,7 +368,7 @@ EOF
 sbatch -A co_stat -p savio --ntasks-per-node=5 --cpus-per-task=4 \
        -N 2 -t 0:05 env.sh
 
-cat env.out | grep SLURM</code></pre>
+grep SLURM env.out </code></pre>
 <h1 id="example-use-of-standard-software-python">Example use of standard software: Python</h1>
 <p>Let's see a basic example of doing an analysis in Python across multiple cores on multiple nodes. We'll use the airline departure data in <em>/global/scratch/paciorek/bayArea.csv</em> (which should be readable by other users).</p>
 <p>Here we'll use <em>IPython</em> for parallel computing. The example is a bit contrived in that a lot of the time is spent moving data around rather than doing computation, but it should illustrate how to do a few things.</p>
