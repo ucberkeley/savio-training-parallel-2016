@@ -584,9 +584,10 @@ mpirun R CMD BATCH --no-save parallel-multi-linalg.R parallel-multi-linalg.Rout 
 <h1 id="ht_helper-example">ht_helper example</h1>
 <p>To use <code>ht_helper.sh</code> we need a <em>taskfile</em> with one line per task. Generally one would programmatically generate this file, as I've done with <code>generate_taskfile.py</code>.</p>
 <p>We can see that each line is uniquely identified by a different id, which is passed into the Python code file, <code>compute.py</code>.</p>
-<p>Finally, we can look at the Python code file to see how each individual task is done. We write the output for each task to a separate file (to avoid collisions in writing to a single output file) and then we can post-process the files to collect our results.</p>
+<p>Finally, we can look at the Python code file to see how each individual task is done. We write the output for each task to a separate file (as a simple way to avoid collisions in writing to a single output file; see below for an alternative) and then we can post-process the files to collect our results.</p>
 <p>Here's how we might post-process in this simple situation:</p>
 <pre><code>cat exp_output1/* &gt;&gt; exp_output1_final</code></pre>
+<p>If you'd like to have all the tasks write to a common file, you'll want to lock the file while each file is writing to it. See <em>lock_example.py</em> for one way to do this.</p>
 <h1 id="how-to-get-additional-help">How to get additional help</h1>
 <ul>
 <li>For technical issues and questions about using Savio:

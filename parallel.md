@@ -14,7 +14,7 @@ Some of this material is based on the extensive Savio documention we have prepar
 
 The materials for this tutorial are available using git at [https://github.com/ucberkeley/savio-training-parallel-2016](https://github.com/ucberkeley/savio-training-parallel-2016) or simply as a [zip file](https://github.com/ucberkeley/savio-training-parallel-2016/archive/master.zip).
 
-These *parallel.html* and *parallel_slides.html* files were created from *parallel.md* by running *make all* (see *Makefile*).
+These *parallel.html* and *parallel_slides.html* files were created from *parallel.md* by running `make all` (see *Makefile* for details on how that creates the html files).
 
 Please see this [zip file](https://github.com/ucberkeley/savio-training-parallel-2016/archive/master.zip) for materials from our introductory training on August 2, including accessing Savio, data transfer, and basic job submission.
 
@@ -65,36 +65,43 @@ A common installation approach is the GNU build system (Autotools), which involv
 Here's are a couple examples of installing a piece of software in your home directory
 
 ```
-cd ~/software/src
+mkdir software 
+mkdir src  # set up directory for source packages
+# install yaml, an optional dependency for Python yaml package
+cd src
 PKG=yaml
+mkdir ${PKG}
+cd ${PKG}
 V=0.1.7
 INSTALLDIR=~/software/${PKG}
 wget http://pyyaml.org/download/libyaml/${PKG}-${V}.tar.gz
 tar -xvzf ${PKG}-${V}.tar.gz
 cd ${PKG}-${V}
+# --prefix is key to install in directory you have access to
 ./configure  --prefix=$INSTALLDIR | tee ../configure.log
-make | tee ../make.log
-make install ../make.log
-```
-
-
-```
-mkdir software; cd software
-mkdir src; cd src  # set up a directory for source packages
-# install geos, needed for rgeos R package
-V=3.5.0
-PKG=geos
-INSTALLDIR=~/software/${PKG}
-wget http://download.osgeo.org/${PKG}/${PKG}-${V}.tar.bz2
-tar -xvjf ${PKG}-${V}.tar.bz2
-cd ${PKG}-${V}
-./configure --prefix=$INSTALLDIR | tee ../configure.log   # --prefix is key to install in directory you have access to
 make | tee ../make.log
 make install | tee ../install.log
 ```
 
 
-For Cmake, the following may work:
+```
+cd ~/src
+# install geos, needed for rgeos R package
+V=3.5.0
+PKG=geos
+mkdir ${PKG}
+cd ${PKG}
+INSTALLDIR=~/software/${PKG}
+wget http://download.osgeo.org/${PKG}/${PKG}-${V}.tar.bz2
+tar -xvjf ${PKG}-${V}.tar.bz2
+cd ${PKG}-${V}
+./configure --prefix=$INSTALLDIR | tee ../configure.log   
+make | tee ../make.log
+make install | tee ../install.log
+```
+
+
+For Cmake, the following may work (this is not a worked example, just some template code):
 ```
 $PKG=foo
 INSTALLDIR=~/software/${PKG}
@@ -115,31 +122,38 @@ You might also need to add the location of an executable to your PATH variable s
 ```
 # needed in the geos example to install the rgeos R package
 export PATH=${INSTALLDIR}/bin:${PATH}
+echo ${PATH}
 ```
 
 # Installing Python and R packages 
 
-If you see comments about `libfoo.so` not found, see above comment about modifying your LD_LIBRARY_PATH environment variable. 
+If you see comments about *libfoo.so* not found, see above comment about modifying your LD_LIBRARY_PATH environment variable. 
+
+If you see comments about *.h* files not being found, you need to make sure the compiler can find the *include* directory that contains those files.
 
 ```
 module load python/2.7.8
 module load pip
 PYPKG=pyyaml
+PKGDIR=~/software/yaml
 pip install --user ${PYPKG}
 ls .local/lib/python2.7/site-packages
 # needs to find header files
 pip install --user --ignore-installed --global-option=build_ext  \
-    --global-option="-I/${INSTALLDIR}/include" ${PYPKG}
+    --global-option="-I/${PKGDIR}/include" ${PYPKG}
 # no -lyaml (needs to find library) files 
 # in this case setting LD_LIBRARY_PATH does not work for some reason
 pip install --user --ignore-installed --global-option=build_ext \
-    --global-option="-I/${INSTALLDIR}/include" \
-    --global-option="-L/${INSTALLDIR}/lib" ${PYPKG}
+    --global-option="-I/${PKGDIR}/include" \
+    --global-option="-L/${PKGDIR}/lib" ${PYPKG}
 ```
 
 ```
 # in this case, setting LD_LIBRARY_PATH works (and we also need to have set PATH)
-module load R
+PKGDIR=~/software/geos
+export LD_LIBRARY_PATH=${PKGDIR}/lib:${LD_LIBRARY_PATH}
+export PATH=${PKGDIR}/bin:${PATH}
+module load r
 Rscript -e "install.packages('rgeos', repos = 'http://cran.cnr.berkeley.edu', lib = Sys.getenv('R_LIBS_USER'))"
 ```
 
@@ -151,14 +165,13 @@ You can follow the approaches on the previous slides, but have your installation
 
 If you change the UNIX permissions of the installed files to allow your group members access, then they should be able to use the software too.
 
-For example:
+For example, you would need to do something lik this:
 
-[[[ Question for Krishna or Yong: would this work or would I need to change 'x' permissions for parent directories ]]]
 
 ```
-PKG=rgeos
-chmod g+r -R ~/software/${PKG}
-chmod g+x ~/software/${PKG}/bin
+PKGDIR=rgeos
+chmod g+r -R ~/software/${PKGDIR}
+chmod g+x ~/software/${PKGDIR}/bin/*
 ```
 
 This will allow reading by group members for all files in the directory and execution for the group members on the executables in `bin`.
@@ -174,9 +187,13 @@ export MODULEPATH=${MODULEPATH}:${MPATH}  # good to put this in your .bashrc
 mkdir ${MPATH}/geos
 ```
 
-Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit  `${MPATH}/geos/3.5.0` based on looking at examples of other module files. 
+Now we create a module file for the version (or one each for multiple versions) of the software we have installed. E.g., for our geos installation we would edit  `${MPATH}/geos/3.5.0` based on looking at examples of other module files. An example module file for our geos example is *example-modulefile*.
 
-An example module file is *example-modulefile*.  Or see some of the Savio system-level modules in `/global/software/sl-6.x86_64/modfiles/langs`. 
+```
+cp example-modfile ${MPATH}/geos/3.5.0
+```
+
+Or see some of the Savio system-level modules in `/global/software/sl-6.x86_64/modfiles/langs`. 
 
 ```
 cat /global/software/sl-6.x86_64/modfiles/langs/python/2.7.8
@@ -354,7 +371,7 @@ Here's an example job script that I'll run. You'll need to modify the --account 
 Now let's submit and monitor the job:
 
 ```
-sbatch job.sh
+sbatch test.sh
 
 squeue -j JOB_ID
 
