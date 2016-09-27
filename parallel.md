@@ -817,10 +817,10 @@ If you'd like to have all the tasks write to a common file, you'll want to lock 
 
 - Upcoming events
     - BRC/D-Lab Cloud Working Group (Track 1) every other Thursday in 356 Barrows
-      - next session: Thursday Sep. 29 @ 4pm: RStudio and Jupyter Notebooks using Docker on Google Compute Engine
+        - next session: Thursday Sep. 29 @ 4pm: RStudio and Jupyter Notebooks using Docker on Google Compute Engine
     - BRC Cloud Working Group (Track 2): Research Computing & Data Architecture + Advanced CyberInfrastructure
     - BRC Cloud Working Group (Track 3): Cloud Architecture & Infrastructure (UC-wide AWS User group)
-      - next session: Wednesday Oct. 19 @ 2 pm
+        - next session: Wednesday Oct. 19 @ 2 pm
 
 - Please help us justify the campus investment in Savio (and keep it available in the future) by [telling us how BRC impacts your research](https://docs.google.com/a/berkeley.edu/forms/d/e/1FAIpQLSdqhh2A77-l8N3eOcOzrH508UKfhIvPn8h5gLDUJ9XrRLvA5Q/viewform), e.g., through
     - publications about research supported by BRC
