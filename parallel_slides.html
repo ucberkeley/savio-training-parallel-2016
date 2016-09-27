@@ -121,7 +121,7 @@ cd ${PKG}-${V}
 make | tee ../make.log
 make install | tee ../install.log</code></pre>
 <p>For Cmake, the following may work (this is not a worked example, just some template code):</p>
-<pre><code>$PKG=foo
+<pre><code>PKG=foo
 INSTALLDIR=~/software/${PKG}
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} . | tee ../cmake.log</code></pre>
 </div>
@@ -136,18 +136,16 @@ cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} . | tee ../cmake.log</code></pre>
 <p>For library files, you may need this:</p>
 <pre><code># needed in the geos example to install the rgeos R package
 export LD_LIBRARY_PATH=${INSTALLDIR}/lib:${LD_LIBRARY_PATH}</code></pre>
-<p>This is because Linux only looks in certain directories for the location of .so library files.</p>
+<p>This is because Linux only looks in certain directories for the location of .so library files. A clue that you may need this is seeing an error message such as <code>libfoo.so</code> not found.</p>
 <p>For executables (binaries), you may need this:</p>
 <pre><code># needed in the geos example to install the rgeos R package
 export PATH=${INSTALLDIR}/bin:${PATH}
 echo ${PATH}</code></pre>
 <p>Linux only looks in certain directories for executables.</p>
-<p>For header files, you generally need to do something specific for the subsequent software you are installing.</p>
+<p>For header files, you generally need to do something specific for the subsequent software you are installing. If you see comments about <em>.h</em> files not being found, you need to make sure the compiler can find the <em>include</em> directory that contains those files.</p>
 </div>
 <div id="installing-python-and-r-packages" class="slide section level1">
 <h1>Installing Python and R packages</h1>
-<p>If you see comments about <em>libfoo.so</em> not found, see above comment about modifying your LD_LIBRARY_PATH environment variable.</p>
-<p>If you see comments about <em>.h</em> files not being found, you need to make sure the compiler can find the <em>include</em> directory that contains those files.</p>
 <pre><code>module load python/2.7.8
 module load pip
 PYPKG=pyyaml
@@ -710,7 +708,14 @@ head taskfile</code></pre>
 <div id="wrap-up" class="slide section level1">
 <h1>Wrap-up</h1>
 <ul>
-<li><p>Upcoming events (ask A Culich)</p></li>
+<li>Upcoming events
+<ul>
+<li>BRC/D-Lab Cloud Working Group (Track 1) every other Thursday in 356 Barrows</li>
+<li>next session: Thursday Sep. 29 @ 4pm: RStudio and Jupyter Notebooks using Docker on Google Compute Engine</li>
+<li>BRC Cloud Working Group (Track 2): Research Computing &amp; Data Architecture + Advanced CyberInfrastructure</li>
+<li>BRC Cloud Working Group (Track 3): Cloud Architecture &amp; Infrastructure (UC-wide AWS User group)</li>
+<li>next session: Wednesday Oct. 19 @ 2 pm</li>
+</ul></li>
 <li>Please help us justify the campus investment in Savio (and keep it available in the future) by <a href="https://docs.google.com/a/berkeley.edu/forms/d/e/1FAIpQLSdqhh2A77-l8N3eOcOzrH508UKfhIvPn8h5gLDUJ9XrRLvA5Q/viewform">telling us how BRC impacts your research</a>, e.g., through
 <ul>
 <li>publications about research supported by BRC</li>
@@ -718,7 +723,7 @@ head taskfile</code></pre>
 <li>recruitment or retention cases in which BRC resources/services play a role</li>
 <li>classes that will be supported by the BRC program</li>
 </ul></li>
-<li><p>Please fill out an evaluation form</p></li>
+<li>Please fill out an evaluation form</li>
 </ul>
 </div>
 </body>

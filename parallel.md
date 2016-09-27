@@ -103,7 +103,7 @@ make install | tee ../install.log
 
 For Cmake, the following may work (this is not a worked example, just some template code):
 ```
-$PKG=foo
+PKG=foo
 INSTALLDIR=~/software/${PKG}
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} . | tee ../cmake.log
 ```
@@ -123,7 +123,7 @@ For library files, you may need this:
 export LD_LIBRARY_PATH=${INSTALLDIR}/lib:${LD_LIBRARY_PATH}
 ```
 
-This is because Linux only looks in certain directories for the location of .so library files.
+This is because Linux only looks in certain directories for the location of .so library files. A clue that you may need this is seeing an error message such as `libfoo.so` not found.
 
 For executables (binaries), you may need this: 
 
@@ -135,13 +135,10 @@ echo ${PATH}
 
  Linux only looks in certain directories for executables.
 
-For header files, you generally need to do something specific for the subsequent software you are installing. 
+For header files, you generally need to do something specific for the subsequent software you are installing. If you see comments about *.h* files not being found, you need to make sure the compiler can find the *include* directory that contains those files.
 
 # Installing Python and R packages 
 
-If you see comments about *libfoo.so* not found, see above comment about modifying your LD_LIBRARY_PATH environment variable. 
-
-If you see comments about *.h* files not being found, you need to make sure the compiler can find the *include* directory that contains those files.
 
 ```
 module load python/2.7.8
@@ -818,7 +815,12 @@ If you'd like to have all the tasks write to a common file, you'll want to lock 
 
 # Wrap-up
 
-- Upcoming events (ask A Culich)
+- Upcoming events
+    - BRC/D-Lab Cloud Working Group (Track 1) every other Thursday in 356 Barrows
+      - next session: Thursday Sep. 29 @ 4pm: RStudio and Jupyter Notebooks using Docker on Google Compute Engine
+    - BRC Cloud Working Group (Track 2): Research Computing & Data Architecture + Advanced CyberInfrastructure
+    - BRC Cloud Working Group (Track 3): Cloud Architecture & Infrastructure (UC-wide AWS User group)
+      - next session: Wednesday Oct. 19 @ 2 pm
 
 - Please help us justify the campus investment in Savio (and keep it available in the future) by [telling us how BRC impacts your research](https://docs.google.com/a/berkeley.edu/forms/d/e/1FAIpQLSdqhh2A77-l8N3eOcOzrH508UKfhIvPn8h5gLDUJ9XrRLvA5Q/viewform), e.g., through
     - publications about research supported by BRC
