@@ -1262,6 +1262,8 @@ We can see that each line is uniquely identified by a different id, which is pas
 
 Finally, we can look at the Python code file to see how each individual task is done. We write the output for each task to a separate file (as a simple way to avoid collisions in writing to a single output file; see below for an alternative) and then we can post-process the files to collect our results. 
 
+To run our job, we submit *job_ht.sh*.
+
 Here's how we might post-process in this simple situation:
 ```
 cat exp_output1/* >> exp_output1_final
