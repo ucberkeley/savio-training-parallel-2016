@@ -1,10 +1,6 @@
 % Savio parallelization training: Parallelized usage of the Berkeley Savio high-performance computing cluster
 % September 27, 2016
 
-# Status
-
- - full draft complete and Chris is testing the examples; he still needs to do a read-through with editing
- - any suggestions on content or phrasing welcome; don't bother word-smithing as I haven't done a careful read-through
 
 # Introduction
 
