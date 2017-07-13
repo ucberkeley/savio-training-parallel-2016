@@ -18,4 +18,5 @@
 #SBATCH --time=00:30:00
 #
 ## Command(s) to run:
+module load gcc openmpi # or module load intel openmpi
 ht_helper.sh -t taskfile -n1 -s1 -v
